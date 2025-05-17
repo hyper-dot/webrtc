@@ -339,8 +339,8 @@ export default function Home() {
               Force Complete ICE Gathering
             </button>
             <p className="text-sm mt-1 text-orange-700">
-              If offer/answer is stuck at "Creating...", click this button to
-              manually complete the ICE gathering process
+              If offer/answer is stuck at &quot;Creating...&quot;, click this
+              button to manually complete the ICE gathering process
             </p>
           </div>
         )}
