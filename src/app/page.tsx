@@ -47,11 +47,28 @@ export default function Home() {
       setupDataChannel(dataChannel);
       dataChannelRef.current = dataChannel;
 
+      // Set a timeout to finalize the offer if no null candidate is received
+      const iceTimeoutId = setTimeout(() => {
+        if (
+          peerConnection.iceGatheringState !== "complete" &&
+          peerConnectionRef.current
+        ) {
+          console.log("ICE gathering timed out, using current SDP");
+          const sdp = peerConnection.localDescription?.sdp || "";
+          if (sdp && !offerSDP) {
+            console.log("Setting final SDP offer from timeout:", sdp);
+            setOfferSDP(sdp);
+            setConnectionStatus("Offer created. Share this with your peer.");
+          }
+        }
+      }, 5000); // 5 second timeout
+
       // Handle ICE candidates
       peerConnection.onicecandidate = (event) => {
         console.log("ICE candidate:", event.candidate);
         if (event.candidate === null) {
           // We've collected all our ICE candidates, update the offer SDP
+          clearTimeout(iceTimeoutId);
           const sdp = peerConnection.localDescription?.sdp || "";
           console.log("Final SDP offer:", sdp);
           setOfferSDP(sdp);
@@ -61,6 +78,15 @@ export default function Home() {
 
       peerConnection.onicegatheringstatechange = () => {
         console.log("ICE gathering state:", peerConnection.iceGatheringState);
+        if (peerConnection.iceGatheringState === "complete") {
+          clearTimeout(iceTimeoutId);
+          if (!offerSDP) {
+            const sdp = peerConnection.localDescription?.sdp || "";
+            console.log("Final SDP offer from state change:", sdp);
+            setOfferSDP(sdp);
+            setConnectionStatus("Offer created. Share this with your peer.");
+          }
+        }
       };
 
       peerConnection.oniceconnectionstatechange = () => {
@@ -103,11 +129,28 @@ export default function Home() {
         dataChannelRef.current = event.channel;
       };
 
+      // Set a timeout to finalize the answer if no null candidate is received
+      const iceTimeoutId = setTimeout(() => {
+        if (
+          peerConnection.iceGatheringState !== "complete" &&
+          peerConnectionRef.current
+        ) {
+          console.log("ICE gathering timed out, using current SDP");
+          const sdp = peerConnection.localDescription?.sdp || "";
+          if (sdp && !answerSDP) {
+            console.log("Setting final SDP answer from timeout:", sdp);
+            setAnswerSDP(sdp);
+            setConnectionStatus("Answer created. Share this with your peer.");
+          }
+        }
+      }, 5000); // 5 second timeout
+
       // Handle ICE candidates
       peerConnection.onicecandidate = (event) => {
         console.log("ICE candidate:", event.candidate);
         if (event.candidate === null) {
           // We've collected all our ICE candidates, update the answer SDP
+          clearTimeout(iceTimeoutId);
           const sdp = peerConnection.localDescription?.sdp || "";
           console.log("Final SDP answer:", sdp);
           setAnswerSDP(sdp);
@@ -117,6 +160,15 @@ export default function Home() {
 
       peerConnection.onicegatheringstatechange = () => {
         console.log("ICE gathering state:", peerConnection.iceGatheringState);
+        if (peerConnection.iceGatheringState === "complete") {
+          clearTimeout(iceTimeoutId);
+          if (!answerSDP) {
+            const sdp = peerConnection.localDescription?.sdp || "";
+            console.log("Final SDP answer from state change:", sdp);
+            setAnswerSDP(sdp);
+            setConnectionStatus("Answer created. Share this with your peer.");
+          }
+        }
       };
 
       peerConnection.oniceconnectionstatechange = () => {
@@ -276,15 +328,19 @@ export default function Home() {
         {errorMessage && <p className="text-red-500 mt-2">{errorMessage}</p>}
         {(connectionStatus.includes("Creating") ||
           connectionStatus.includes("Offer created")) && (
-          <div className="mt-2">
+          <div className="mt-2 p-2 border border-orange-300 bg-orange-50 rounded">
+            <p className="font-medium text-orange-800 mb-1">
+              ICE gathering in progress...
+            </p>
             <button
               onClick={forceTriggerICE}
-              className="text-sm px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded"
+              className="px-3 py-1.5 bg-orange-500 text-white rounded hover:bg-orange-600 font-medium"
             >
-              Force ICE Candidates
+              Force Complete ICE Gathering
             </button>
-            <p className="text-xs mt-1 text-gray-500">
-              If the offer is not generating, try clicking this button
+            <p className="text-sm mt-1 text-orange-700">
+              If offer/answer is stuck at "Creating...", click this button to
+              manually complete the ICE gathering process
             </p>
           </div>
         )}
